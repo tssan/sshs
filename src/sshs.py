@@ -6,6 +6,7 @@ VERSION = 'v1.0.0'
 
 USER_DIR = '.sshs'
 HOSTS_FILE = 'hosts.json'
+LAST_FILE = 'last'
 
 EMPTY_HOSTS_FILE = {
     'aliases': [],
@@ -15,16 +16,32 @@ EMPTY_HOSTS_FILE = {
 
 
 class SshSelectUI:
-    def __init__(self, hosts_path):
-        self.hosts_path = hosts_path
+    def __init__(self, user_path):
+        self.hosts_path = os.path.join(user_path, HOSTS_FILE)
+        self.last_path = os.path.join(user_path, LAST_FILE)
         self.hosts = {}
 
-        with open(hosts_path) as hosts_file:
+        with open(self.hosts_path) as hosts_file:
             self.hosts = json.load(hosts_file)
+
+    @property
+    def last_alias(self):
+        if os.path.exists(self.last_path):
+            return open(self.last_path, 'r').read()
+        print('Connection not found.')
 
     def update(self):
         with open(self.hosts_path, 'w') as hosts_file:
             json.dump(self.hosts, hosts_file)
+
+    def connect(self, alias):
+        user = self.hosts['users'][alias]
+        host = self.hosts['hosts'][alias]
+
+        with open(self.last_path, 'w') as f:
+            f.write(alias)
+
+        os.system(f'ssh {user}@{host}')
 
     def menu(self):
         LAST = 'use last connection'
@@ -43,7 +60,9 @@ class SshSelectUI:
         )
         result = cli.launch()
 
-        if result == NEW:
+        if result == LAST and self.last_alias:
+            self.connect(self.last_alias)
+        elif result == NEW:
             self.add_host()
         elif result == LIST:
             self.show_list()
@@ -75,6 +94,7 @@ class SshSelectUI:
         self.hosts['users'][alias] = username
 
         self.update()
+        return self.menu()
 
     def show_list(self):
         if len(self.hosts['aliases']) == 0:
@@ -97,9 +117,7 @@ class SshSelectUI:
         result = host_cli.launch()
 
         if result == CON_HOST:
-            user = self.hosts['users'][alias]
-            host = self.hosts['hosts'][alias]
-            os.system(f'ssh {user}@{host}')
+            self.connect(alias)
         elif result == DEL_HOST:
             self.hosts['aliases'].remove(alias)
             del self.hosts['hosts'][alias]
@@ -114,7 +132,6 @@ if __name__ == '__main__':
     # print(f'SSH Select {VERSION}')
 
     home_path = os.path.expanduser('~')
-    print(home_path, USER_DIR)
     user_path = os.path.join(home_path, USER_DIR)
 
     if not os.path.exists(user_path):
@@ -127,4 +144,4 @@ if __name__ == '__main__':
             json.dump(EMPTY_HOSTS_FILE, hosts_file)
         print(f'All your hosts will be stored here: {hosts_path}')
 
-    SshSelectUI(hosts_path).menu()
+    SshSelectUI(user_path).menu()
