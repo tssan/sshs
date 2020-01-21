@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 import bullet as b
@@ -35,6 +36,10 @@ class SshSelectUI:
             json.dump(self.hosts, hosts_file)
 
     def connect(self, alias):
+        if alias not in self.hosts['aliases']:
+            print(f'Host {alias} not found.')
+            return
+
         user = self.hosts['users'][alias]
         host = self.hosts['hosts'][alias]
 
@@ -129,7 +134,10 @@ class SshSelectUI:
 
 
 if __name__ == '__main__':
-    # print(f'SSH Select {VERSION}')
+    parser = argparse.ArgumentParser(
+        description=f'SSH Select {VERSION}')
+    parser.add_argument('host', type=str, nargs='?')
+    args = parser.parse_args()
 
     home_path = os.path.expanduser('~')
     user_path = os.path.join(home_path, USER_DIR)
@@ -144,4 +152,9 @@ if __name__ == '__main__':
             json.dump(EMPTY_HOSTS_FILE, hosts_file)
         print(f'All your hosts will be stored here: {hosts_path}')
 
-    SshSelectUI(user_path).menu()
+    ui = SshSelectUI(user_path)
+
+    if args.host:
+        ui.connect(args.host)
+    else:
+        ui.menu()
