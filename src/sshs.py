@@ -1,16 +1,27 @@
+import json
 import os
 import bullet as b
 
 VERSION = 'v1.0.0'
 
 USER_DIR = '.sshs'
+HOSTS_FILE = 'hosts.json'
+
+EMPTY_HOSTS_FILE = {
+    'aliases': [],
+    'hosts': {}
+}
 
 
 class SshSelectUI:
-    def __init__(self, user_path):
-        pass
+    def __init__(self, hosts_path):
+        self.hosts_path = hosts_path
+        self.hosts = {}
 
-    def menu(sell):
+        with open(hosts_path) as hosts_file:
+            self.hosts = json.load(hosts_file)
+
+    def menu(self):
         LAST = 'use last connection'
         LIST = 'list all hosts'
         NEW = 'add new host'
@@ -24,7 +35,28 @@ class SshSelectUI:
             ]
         )
         result = cli.launch()
-        print(result)
+
+        if result == NEW:
+            self.add_host()
+
+    def add_host(self):
+        cli = b.VerticalPrompt([
+            b.Input('Alias: '),
+            b.Input('Hostname/IP: ')
+        ])
+        result = cli.launch()
+        alias = result[0][1]
+        host = result[1][1]
+
+        if alias in self.hosts['aliases']:
+            print('Host already exists')
+            return self.add_host()
+
+        self.hosts['aliases'].append(alias)
+        self.hosts['hosts'][alias] = host
+
+        with open(hosts_path, 'w') as hosts_file:
+            json.dump(self.hosts, hosts_file)
 
 
 if __name__ == '__main__':
@@ -37,6 +69,11 @@ if __name__ == '__main__':
     if not os.path.exists(user_path):
         os.makedirs(user_path, mode=0o700)
         print(f'Initial setup:\n creating folder: {user_path}')
-        print('All your hosts will be stored there.')
 
-    SshSelectUI(user_path).menu()
+    hosts_path = os.path.join(user_path, HOSTS_FILE)
+    if not os.path.exists(hosts_path):
+        with open(hosts_path, 'w') as hosts_file:
+            json.dump(EMPTY_HOSTS_FILE, hosts_file)
+        print(f'All your hosts will be stored here: {hosts_path}')
+
+    SshSelectUI(hosts_path).menu()
