@@ -133,7 +133,7 @@ class SshSelectUI:
             return self.menu()
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(
         description=f'SSH Select {VERSION}')
     parser.add_argument('host', type=str, nargs='?')
@@ -158,3 +158,7 @@ if __name__ == '__main__':
         ui.connect(args.host)
     else:
         ui.menu()
+
+
+if __name__ == '__main__':
+    main()
