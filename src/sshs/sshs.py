@@ -12,8 +12,11 @@ LAST_FILE = 'last'
 EMPTY_HOSTS_FILE = {
     'aliases': [],
     'hosts': {},
-    'users': {}
+    'users': {},
+    'ports': {}
 }
+
+DEAFAULT_PORT = 22
 
 
 class SshSelectUI:
@@ -42,11 +45,13 @@ class SshSelectUI:
 
         user = self.hosts['users'][alias]
         host = self.hosts['hosts'][alias]
+        port = self.hosts['ports'][alias]
 
         with open(self.last_path, 'w') as f:
             f.write(alias)
 
-        os.system(f'ssh {user}@{host}')
+        print(f'ssh {user}@{host} -p {port}')
+        os.system(f'ssh {user}@{host} -p {port}')
 
     def menu(self):
         LAST = 'use last connection'
@@ -79,12 +84,17 @@ class SshSelectUI:
 
         cli = b.VerticalPrompt([
             b.Input('Alias: '),
-            b.Input('Hostname/IP: '),
+            b.Input('Hostname/IP:PORT (default port:22) eg.: 192.168.1.1:3001 or mydomain.com '),
             b.Input(f'Username (default:{user}): ', pattern=r'.*')
         ])
         result = cli.launch()
         alias = result[0][1]
-        host = result[1][1]
+        host_n_port = result[1][1].split(':')
+        host = host_n_port[0]
+        if len(host_n_port) > 1:
+            port = host_n_port[1]
+        else:
+            port = DEAFAULT_PORT
         username = result[2][1]
 
         if username == '':
@@ -96,6 +106,7 @@ class SshSelectUI:
 
         self.hosts['aliases'].append(alias)
         self.hosts['hosts'][alias] = host
+        self.hosts['ports'][alias] = port
         self.hosts['users'][alias] = username
 
         self.update()
