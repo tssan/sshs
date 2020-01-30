@@ -10,7 +10,7 @@ setup(
     packages=find_packages('src'),
     entry_points={
         "console_scripts": [
-            "sshs=sshs:main"
+            "sshs=sshs:cli"
         ]
     },
     version='1.0.0',
@@ -20,7 +20,7 @@ setup(
     author_email='piotr.karasinski@gmail.com',
     license='Apache License 2.0',  # choose the appropriate license
     install_requires=[
-        'bullet==2.1.0'
+        'Click==7.0'
     ],
     python_requires='>=3.5'
 )

@@ -29,7 +29,7 @@ clean:
 
 .PHONY: run
 run:
-	@. $(ENV_PATH)/bin/activate && python src/sshs/sshs.py ${HOST}
+	@. $(ENV_PATH)/bin/activate && python src/sshs/sshs.py ${ARGS}
 
 
 # develop

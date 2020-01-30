@@ -1,175 +1,99 @@
-import argparse
-import json
 import os
-import bullet as b
+
+import click
+
 
 VERSION = 'v1.0.0'
 
-USER_DIR = '.sshs'
-HOSTS_FILE = 'hosts.json'
-LAST_FILE = 'last'
-
-EMPTY_HOSTS_FILE = {
-    'aliases': [],
-    'hosts': {},
-    'users': {},
-    'ports': {}
-}
 
 DEAFAULT_PORT = 22
 
+HOME_PATH = os.path.expanduser('~')
+SSHS_PATH = os.path.join(HOME_PATH, '.sshs')
+HOSTS_PATH = os.path.join(SSHS_PATH, 'hosts')
+LAST_PATH = os.path.join(SSHS_PATH, 'last')
 
-class SshSelectUI:
-    def __init__(self, user_path):
-        self.hosts_path = os.path.join(user_path, HOSTS_FILE)
-        self.last_path = os.path.join(user_path, LAST_FILE)
-        self.hosts = {}
 
-        with open(self.hosts_path) as hosts_file:
-            self.hosts = json.load(hosts_file)
+def load_hosts():
+    if not os.path.exists(SSHS_PATH):
+        os.makedirs(SSHS_PATH, mode=0x700)
+        return []
 
-    @property
-    def last_alias(self):
-        if os.path.exists(self.last_path):
-            return open(self.last_path, 'r').read()
-        print('Connection not found.')
+    hosts = []
 
-    def update(self):
-        with open(self.hosts_path, 'w') as hosts_file:
-            json.dump(self.hosts, hosts_file)
+    if not os.path.exists(HOSTS_PATH):
+        os.system(f'touch {HOSTS_PATH}')
 
-    def connect(self, alias):
-        if alias not in self.hosts['aliases']:
-            print(f'Host {alias} not found.')
-            return
+    with open(HOSTS_PATH, 'r') as hosts_file:
+        for l in hosts_file:
+            hosts.append(l.replace('\n', ''))
 
-        user = self.hosts['users'][alias]
-        host = self.hosts['hosts'][alias]
-        port = self.hosts['ports'][alias]
+    return hosts
 
-        with open(self.last_path, 'w') as f:
-            f.write(alias)
 
-        print(f'ssh {user}@{host} -p {port}')
-        os.system(f'ssh {user}@{host} -p {port}')
+def connect(alias, destination, port):
+    click.echo(f'connecting to {alias}..')
+    os.system(f'ssh {destination} -p {port}')
 
-    def menu(self):
-        LAST = 'use last connection'
-        LIST = 'list all hosts'
-        NEW = 'add new host'
-        EXIT = 'exit'
 
-        cli = b.Bullet(
-            prompt='*',
-            choices=[
-                LAST,
-                LIST,
-                NEW,
-                EXIT
-            ]
-        )
-        result = cli.launch()
+def validate_alias(s):
+    # click.BadParameter('yy?', ctx=None, param='destination')
+    pass
 
-        if result == LAST and self.last_alias:
-            self.connect(self.last_alias)
-        elif result == NEW:
-            self.add_host()
-        elif result == LIST:
-            self.show_list()
-        elif result == EXIT:
-            return
 
-    def add_host(self):
-        user = os.getlogin()
+def parse(user_input):
+    parts = user_input.split(':')
 
-        cli = b.VerticalPrompt([
-            b.Input('Alias: '),
-            b.Input('Hostname/IP:PORT (default port:22) eg.: 192.168.1.1:3001 or mydomain.com '),
-            b.Input(f'Username (default:{user}): ', pattern=r'.*')
-        ])
-        result = cli.launch()
-        alias = result[0][1]
-        host_n_port = result[1][1].split(':')
-        host = host_n_port[0]
-        if len(host_n_port) > 1:
-            port = host_n_port[1]
+    if len(parts) == 3:
+        alias, destination, port = parts
+    elif len(parts) == 2:
+        destination, port = parts
+        alias = None
+    elif len(parts) == 1:
+        if '@' in parts[0]:
+            destination = parts[0]
+            alias = None
         else:
-            port = DEAFAULT_PORT
-        username = result[2][1]
+            destination = None
+            alias = parts[0]
+        port = None
 
-        if username == '':
-            username = user
+    if alias is not None:
+        validate_alias(alias)
 
-        if alias in self.hosts['aliases']:
-            print('Host already exists')
-            return self.add_host()
-
-        self.hosts['aliases'].append(alias)
-        self.hosts['hosts'][alias] = host
-        self.hosts['ports'][alias] = port
-        self.hosts['users'][alias] = username
-
-        self.update()
-        return self.menu()
-
-    def show_list(self):
-        if len(self.hosts['aliases']) == 0:
-            print('Hosts list is empty.')
-            return self.menu()
-
-        cli = b.Bullet(
-            prompt='Available hosts:',
-            choices=self.hosts['aliases']
-        )
-        alias = cli.launch()
-
-        CON_HOST = 'connect'
-        DEL_HOST = 'delete host'
-        BACK = 'back'
-        host_cli = b.Bullet(
-            prompt=f'Host {alias} options:',
-            choices=[CON_HOST, DEL_HOST, BACK]
-        )
-        result = host_cli.launch()
-
-        if result == CON_HOST:
-            self.connect(alias)
-        elif result == DEL_HOST:
-            self.hosts['aliases'].remove(alias)
-            del self.hosts['hosts'][alias]
-            del self.hosts['users'][alias]
-            self.update()
-            return self.show_list()
-        elif result == BACK:
-            return self.menu()
+    return {
+        'alias': alias,
+        'destination': destination,
+        'port': port
+    }
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description=f'SSH Select {VERSION}')
-    parser.add_argument('host', type=str, nargs='?')
-    args = parser.parse_args()
+def find_in_hosts(h_dict, hosts):
+    print('searching for', h_dict)
+    if h_dict['alias'] is not None:
+        for h in hosts:
+            parsed_h = parse(h)
+            if parsed_h['alias'] == h_dict['alias']:
+                return parsed_h
 
-    home_path = os.path.expanduser('~')
-    user_path = os.path.join(home_path, USER_DIR)
+    return False
 
-    if not os.path.exists(user_path):
-        os.makedirs(user_path, mode=0o700)
-        print(f'Initial setup:\n creating folder: {user_path}')
 
-    hosts_path = os.path.join(user_path, HOSTS_FILE)
-    if not os.path.exists(hosts_path):
-        with open(hosts_path, 'w') as hosts_file:
-            json.dump(EMPTY_HOSTS_FILE, hosts_file)
-        print(f'All your hosts will be stored here: {hosts_path}')
+@click.command()
+@click.option('-ls', is_flag=True, help='List of hosts.')
+@click.option('-rm', is_flag=True, help='Remove host.')
+@click.argument('destination')
+def cli(ls, rm, destination):
+    h = parse(destination)
+    hosts = load_hosts()
+    found = find_in_hosts(h, hosts)
 
-    ui = SshSelectUI(user_path)
-
-    if args.host:
-        ui.connect(args.host)
+    if found:
+        connect(**found)
     else:
-        ui.menu()
+        click.echo(f'what to do?...{destination}')
+        # os.system(f"echo {h['alias']}:{h['destination']}:{h['port']} >> {HOSTS_PATH}")
 
 
 if __name__ == '__main__':
-    main()
+    cli()

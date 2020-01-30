@@ -1,1 +1,1 @@
-from .sshs import main
+from .sshs import cli
