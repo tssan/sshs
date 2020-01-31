@@ -1,4 +1,5 @@
 import os
+import sys
 
 import click
 
@@ -99,13 +100,38 @@ def find_in_hosts(h_dict, hosts):
     return False
 
 
+def list_hosts():
+    hosts = load_hosts()
+    data = []
+    for h in hosts:
+        d = parse(h)
+        data.append((d['alias'], f"{d['destination']}:{d['port']}"))
+
+    f = click.HelpFormatter()
+    f.write_dl(data)
+    click.echo(f.getvalue())
+
+
 @click.command()
 @click.option('-ls', is_flag=True, help='List of hosts.')
-@click.option('-rm', is_flag=True, help='Remove host.')
-@click.argument('destination')
-def cli(ls, rm, destination):
-    h = parse(destination)
+@click.option('-e', 'edit', is_flag=True, help='Edit hosts.')
+@click.argument('destination', required=False)
+def cli(ls, edit, destination):
+    '''
+    [DESTINATION]: alias:user@host:port\n
+    Connect via ssh to DESTINATION. Each new host will be saved automatically and asked for alias if not given.
+    '''
+    if edit:
+        click.edit(filename=HOSTS_PATH)
+        click.echo('Success: hosts saved.')
+        sys.exit(0)
+
+    if ls:
+        list_hosts()
+        sys.exit(0)
+
     hosts = load_hosts()
+    h = parse(destination)
     found = find_in_hosts(h, hosts)
 
     if found:
