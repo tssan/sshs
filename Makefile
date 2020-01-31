@@ -61,7 +61,7 @@ dev-clean:
 
 .PHONY: dev-sshs
 dev-sshs:
-	@. $(ENV_PATH)/bin/activate && sshs ${HOST}
+	@. $(ENV_PATH)/bin/activate && sshs ${ARGS}
 
 
 # system install/remove

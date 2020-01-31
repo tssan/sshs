@@ -69,12 +69,32 @@ def parse(user_input):
 
 
 def find_in_hosts(h_dict, hosts):
-    print('searching for', h_dict)
     if h_dict['alias'] is not None:
         for h in hosts:
             parsed_h = parse(h)
             if parsed_h['alias'] == h_dict['alias']:
                 return parsed_h
+
+        if h_dict['port'] is None:
+            h_dict['port'] = 22
+
+        if h_dict['destination'] is not None:
+            os.system(f"echo {h_dict['alias']}:{h_dict['destination']}:{h_dict['port']} >> {HOSTS_PATH}")
+            return h_dict
+
+    if h_dict['destination'] is not None:
+        h_dict['alias'] = click.prompt(
+            f"If you want to save {h_dict['destination']} enter new alias (empty value skips)",
+            default='-not-set-',
+            show_default=False
+        )
+
+        if h_dict['port'] is None:
+            h_dict['port'] = 22
+
+        if h_dict['alias'] is '-not-set-':
+            return h_dict
+        return find_in_hosts(h_dict, hosts)
 
     return False
 
@@ -90,9 +110,6 @@ def cli(ls, rm, destination):
 
     if found:
         connect(**found)
-    else:
-        click.echo(f'what to do?...{destination}')
-        # os.system(f"echo {h['alias']}:{h['destination']}:{h['port']} >> {HOSTS_PATH}")
 
 
 if __name__ == '__main__':
