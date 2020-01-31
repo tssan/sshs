@@ -116,11 +116,13 @@ def list_hosts():
 @click.option('-ls', is_flag=True, help='List of hosts.')
 @click.option('-e', 'edit', is_flag=True, help='Edit hosts.')
 @click.argument('destination', required=False)
-def cli(ls, edit, destination):
+@click.pass_context
+def cli(ctx, ls, edit, destination):
     '''
     [DESTINATION]: alias:user@host:port\n
     Connect via ssh to DESTINATION. Each new host will be saved automatically and asked for alias if not given.
     '''
+
     if edit:
         click.edit(filename=HOSTS_PATH)
         click.echo('Success: hosts saved.')
@@ -128,6 +130,10 @@ def cli(ls, edit, destination):
 
     if ls:
         list_hosts()
+        sys.exit(0)
+
+    if destination is None:
+        click.echo(ctx.get_help())
         sys.exit(0)
 
     hosts = load_hosts()
