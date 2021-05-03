@@ -93,7 +93,7 @@ def find_in_hosts(h_dict, hosts):
         if h_dict['port'] is None:
             h_dict['port'] = 22
 
-        if h_dict['alias'] is '-not-set-':
+        if h_dict['alias'] == '-not-set-':
             return h_dict
         return find_in_hosts(h_dict, hosts)
 
